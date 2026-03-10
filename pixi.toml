@@ -1,0 +1,24 @@
+[workspace]
+name = "vehicle-trajectory-tcn-vae"
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = "3.13.*"
+pip = ">=25.0"
+
+[pypi-options]
+extra-index-urls = ["https://download.pytorch.org/whl/cu124"]
+
+[pypi-dependencies]
+torch = "==2.6.0"
+torchvision = "==0.21.0"
+torchaudio = "==2.6.0"
+torch-geometric = "==2.7.0"
+numpy = "==2.2.4"
+
+[tasks]
+verify-cuda = "python scripts/verify_cuda.py"
+bootstrap = "python -m pip install --upgrade pip && python -m pip install -r requirements.txt"
+train = "python scripts/train.py --dataset-path ${DATASET_PATH}"
+validate = "python scripts/validate.py --dataset-path ${DATASET_PATH} --checkpoint ${CHECKPOINT_PATH}"

@@ -1,0 +1,37 @@
+[project]
+name = "vehicle-trajectory-tcn-vae"
+version = "0.1.0"
+description = "Trajectory forecasting with direct 2D TCN encoding and CVAE multimodal decoding"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "numpy==2.2.4",
+    "torch==2.6.0",
+    "torch-geometric==2.7.0",
+    "torchaudio==2.6.0",
+    "torchvision==0.21.0",
+]
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[tool.pixi.dependencies]
+python = "3.13.*"
+pip = ">=25.0"
+
+[tool.pixi.pypi-options]
+extra-index-urls = ["https://download.pytorch.org/whl/cu124"]
+
+[tool.pixi.pypi-dependencies]
+torch = "==2.6.0"
+torchvision = "==0.21.0"
+torchaudio = "==2.6.0"
+torch-geometric = "==2.7.0"
+numpy = "==2.2.4"
+
+[tool.pixi.tasks]
+verify-cuda = "python scripts/verify_cuda.py"
+bootstrap = "python -m pip install --upgrade pip && python -m pip install -r requirements.txt"
+train = "python scripts/train.py --dataset-path ${DATASET_PATH}"
+validate = "python scripts/validate.py --dataset-path ${DATASET_PATH} --checkpoint ${CHECKPOINT_PATH}"
