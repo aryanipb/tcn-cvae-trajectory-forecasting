@@ -128,18 +128,28 @@ def main():
             f"[EPOCH {epoch}] train_loss={train_loss:.4f} "
             f"val_minADE={val_ade:.4f} val_minFDE={val_fde:.4f}"
         )
+        if (batch_idx%10 == 0):
+            if val_ade < best_val_ade:
+                best_val_ade = val_ade
+                payload = {
+                    "model": model.state_dict(),
+                    "optimizer": optimizer.state_dict(),
+                    "epoch": epoch,
+                    "best_val_ade": best_val_ade,
+                    "args": vars(args),
+                }
+                torch.save(payload, save_path)
+            else:
+                payload = {
+                    "model": model.state_dict(),
+                    "optimizer": optimizer.state_dict(),
+                    "epoch": epoch,
+                    "best_val_ade": best_val_ade,
+                    "args": vars(args),
+                }
+                torch.save(payload, save_path)
 
-        if val_ade < best_val_ade:
-            best_val_ade = val_ade
-            payload = {
-                "model": model.state_dict(),
-                "optimizer": optimizer.state_dict(),
-                "epoch": epoch,
-                "best_val_ade": best_val_ade,
-                "args": vars(args),
-            }
-            torch.save(payload, save_path)
-            print(f"[INFO] saved best checkpoint -> {save_path}")
+                print(f"[INFO] saved best checkpoint -> {save_path}")
 
     print(f"[DONE] best_val_minADE={best_val_ade:.4f}")
 
