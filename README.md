@@ -43,8 +43,8 @@ Observed sample schema:
 - `y`: `(40, 5)`
 
 Target usage:
-- first 30 future steps
-- first 2 coordinates
+- Next 40 future steps
+- x,y coordinates
 
 Normalization is fixed and consistent across train and validation paths.
 
