@@ -11,7 +11,7 @@ class TCNVAEForecaster(nn.Module):
         self,
         node_dim: int = 5,
         ego_dim: int = 5,
-        future_steps: int = 30,
+        future_steps: int = 40,
         num_modes: int = 6,
         latent_dim: int = 32,
         encoder_channels: tuple[int, ...] = (32, 64, 128, 256),

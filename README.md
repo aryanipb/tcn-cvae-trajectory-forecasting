@@ -2,7 +2,7 @@
 
 This repository trains and validates a multimodal vehicle trajectory forecaster.
 
-It is built to predict **multiple plausible futures** (not a single deterministic path) from:
+It is built to predict **multiple plausible futures** from:
 - 50 observed timesteps of graph/node motion features
 - ego-vehicle history features
 
@@ -190,9 +190,7 @@ This section explains the method, not repo layout.
 Given observed history, predict a **distribution** of future trajectories:
 - observed node tensor (after batching): roughly `B x 50 x N x 5`
 - observed ego tensor: `B x 50 x 5`
-- predicted trajectories: `B x K x 30 x 2` with `K=6`
-
-Important: the dataset stores 40 future steps, but training uses the first 30 (`[:, :30, :2]`).
+- predicted trajectories: `B x K x 40 x 2` with `K=6`
 
 ### 11.2 Encoder: 2D Dilated TCN Over Time and Neighbor Axis
 
