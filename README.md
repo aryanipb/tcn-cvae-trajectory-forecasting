@@ -30,7 +30,7 @@ If you follow the commands exactly, you will reach a complete local run.
 
 ```bash
 git clone https://github.com/aryanipb/tcn-cvae-trajectory-forecasting.git
-cd vehicle-trajectory-tcn-vae
+cd tcn-cvae-trajectory-forecasting
 ```
 
 ## 4. Install Pixi
