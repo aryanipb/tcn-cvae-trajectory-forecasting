@@ -6,7 +6,7 @@ class ConditionalTrajectoryVAE(nn.Module):
     def __init__(
         self,
         context_dim: int,
-        future_steps: int = 30,
+        future_steps: int = 40,
         latent_dim: int = 32,
         num_modes: int = 6,
         hidden_dim: int = 256,

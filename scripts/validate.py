@@ -20,6 +20,7 @@ def parse_args():
     parser.add_argument("--max-samples", type=int, default=None)
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--num-workers", type=int, default=0)
+    parser.add_argument("--future-steps", type=int, default=40)
     return parser.parse_args()
 
 
@@ -31,7 +32,7 @@ def main():
     dataset = GraphTrajectoryDataset(args.dataset_path, max_samples=args.max_samples)
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
-    model = TCNVAEForecaster().to(device)
+    model = TCNVAEForecaster(future_steps=args.future_steps).to(device)
     checkpoint_path = Path(args.checkpoint)
     if checkpoint_path.exists():
         ckpt = torch.load(checkpoint_path, map_location=device)
@@ -49,7 +50,7 @@ def main():
 
     with torch.no_grad():
         for batch in loader:
-            node, edge, ego, target = prepare_batch(batch, device, stats)
+            node, edge, ego, target = prepare_batch(batch, device, stats, future_steps=args.future_steps)
             out = model(node, edge, ego, target=None)
             preds = out["preds"]
 

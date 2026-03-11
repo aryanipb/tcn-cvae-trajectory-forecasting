@@ -20,15 +20,17 @@ def move_norm_stats(device: torch.device):
     }
 
 
-def prepare_batch(batch, device: torch.device, stats: dict):
+def prepare_batch(batch, device: torch.device, stats: dict, future_steps: int = 40):
     batch = batch.to(device)
     bsz = batch.num_graphs
+    if future_steps <= 0 or future_steps > 40:
+        raise ValueError(f"future_steps must be in [1, 40], got {future_steps}")
 
     node = ((batch.x - stats["node_mu"]) / stats["node_sigma"]).view(bsz, 50, -1, 5)
     edge = batch.edge_attr.view(bsz, 50, -1, 4)
     ego = ((batch.ego_features - stats["ego_mu"]) / stats["ego_sigma"]).view(bsz, 50, -1)
 
-    target = batch.y.reshape(bsz, 40, -1)[:, :30, :2]
+    target = batch.y.reshape(bsz, 40, -1)[:, :future_steps, :2]
     target = (target - stats["y_mu"]) / stats["y_sigma"]
     return node, edge, ego, target
 

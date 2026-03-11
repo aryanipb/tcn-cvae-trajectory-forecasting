@@ -28,7 +28,7 @@ def evaluate(model, loader, device, stats):
     count = 0
     with torch.no_grad():
         for batch in loader:
-            node, edge, ego, target = prepare_batch(batch, device, stats)
+            node, edge, ego, target = prepare_batch(batch, device, stats, future_steps=model.cvae.future_steps)
             out = model(node, edge, ego, target=None)
             preds = out["preds"]
 
@@ -55,6 +55,7 @@ def parse_args():
     parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--save-path", type=str, default="checkpoints/tcn_cvae.pt")
+    parser.add_argument("--future-steps", type=int, default=40)
     return parser.parse_args()
 
 
@@ -71,7 +72,7 @@ def main():
     train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, drop_last=False)
     val_loader = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, drop_last=False)
 
-    model = TCNVAEForecaster().to(device)
+    model = TCNVAEForecaster(future_steps=args.future_steps).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
     stats = move_norm_stats(device)
@@ -86,7 +87,7 @@ def main():
         step_count = 0
 
         for batch_idx, batch in enumerate(train_loader, start=1):
-            node, edge, ego, target = prepare_batch(batch, device, stats)
+            node, edge, ego, target = prepare_batch(batch, device, stats, future_steps=args.future_steps)
 
             optimizer.zero_grad(set_to_none=True)
             out = model(node, edge, ego, target=target)
