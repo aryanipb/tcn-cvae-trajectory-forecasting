@@ -15,9 +15,9 @@ from trajectory_vae_forecasting.utils import min_ade, min_fde, move_norm_stats, 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Validate TCN+CVAE trajectory forecasting model")
-    parser.add_argument("--dataset-path", type=str, required=True)
-    parser.add_argument("--checkpoint", type=str, default="")
-    parser.add_argument("--max-samples", type=int, default=30)
+    parser.add_argument("--dataset-path", type=str, default=str(PROJECT_ROOT / "datasets" / "awk9_val_1k.pt"))
+    parser.add_argument("--checkpoint", type=str, default=str(PROJECT_ROOT / "checkpoints" / "tcn_cvae.pt"))
+    parser.add_argument("--max-samples", type=int, default=None)
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--num-workers", type=int, default=0)
     return parser.parse_args()
@@ -32,12 +32,13 @@ def main():
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
     model = TCNVAEForecaster().to(device)
-    if args.checkpoint:
-        ckpt = torch.load(args.checkpoint, map_location=device)
+    checkpoint_path = Path(args.checkpoint)
+    if checkpoint_path.exists():
+        ckpt = torch.load(checkpoint_path, map_location=device)
         model.load_state_dict(ckpt["model"])
-        print(f"[INFO] loaded checkpoint from {args.checkpoint} (epoch={ckpt.get('epoch', 'n/a')})")
+        print(f"[INFO] loaded checkpoint from {checkpoint_path} (epoch={ckpt.get('epoch', 'n/a')})")
     else:
-        print("[WARN] no checkpoint provided; evaluating randomly initialized model")
+        print(f"[WARN] checkpoint not found at {checkpoint_path}; evaluating randomly initialized model")
 
     stats = move_norm_stats(device)
     model.eval()

@@ -1,29 +1,30 @@
 # Vehicle Trajectory Forecasting with Direct 2D TCN + Conditional VAE
 
 ## 1. Overview
-This project implements a vehicle trajectory forecasting model for the same task format as the reference `predmodel` training pipeline, with a fully different modeling design:
+This repository implements multimodal vehicle trajectory forecasting for the same task interface as the reference pipeline, but with a fully different model design.
 
-- No spatial encoder branch is used.
-- Node history is fed directly into a 2D temporal convolutional network.
-- The resulting context is decoded by a custom conditional variational autoencoder for multimodal trajectory prediction.
+Model design in this project:
+- Direct node history input to a 2D temporal convolution encoder
+- No spatial encoder branch
+- Context-conditioned variational autoencoder for multimodal trajectory generation
 
-The repository includes:
-- Modular model implementation
-- Minimal non-Modal training script
-- Minimal non-Modal validation script
-- Dataset preprocessing reference files copied into `data_processing/`
-- Reproducible Pixi + requirements-based environment setup
-- CUDA compatibility verification utility
+This repo provides:
+- Modular model code
+- Minimal non-Modal train/validate scripts
+- Pixi-first reproducible environment setup
+- CUDA/runtime verification utility
+- Dataset download script for Hugging Face
+- Preprocessing reference files for transparency
 
 ## 2. Problem Formulation
-Given observed trajectory context for each scenario:
-- Node features: `X in R^{T_obs x N x F_node}`
-- Ego features: `E in R^{T_obs x F_ego}`
+Given observed context:
+- node features `X in R^{T_obs x N x F_node}`
+- ego features `E in R^{T_obs x F_ego}`
 
-Predict `K` plausible futures for the target agent:
+Predict `K` plausible future trajectories:
 - `Y_hat in R^{K x T_pred x 2}`
 
-where:
+Task constants used here:
 - `T_obs = 50`
 - `N = 9`
 - `F_node = 5`
@@ -31,83 +32,51 @@ where:
 - `T_pred = 30`
 - `K = 6`
 
-The training objective combines:
-- Best-of-K reconstruction loss on future trajectories
-- KL divergence between posterior and context-conditioned prior
-- Diversity regularization across generated modes
+Training objective combines:
+- best-of-K trajectory reconstruction
+- KL divergence between posterior and prior
+- diversity regularization across predicted modes
 
-## 3. Dataset Interface and Processing
-### 3.1 Input file format
-Training data is loaded from a PyTorch `.pt` file containing a list of `torch_geometric.data.Data` objects.
+## 3. Dataset Specification
+Source repo:
+- https://huggingface.co/datasets/aryanb1702/awk9/
 
-Observed schema:
+Expected files after download:
+- `datasets/awk9_train_10k.pt`
+- `datasets/awk9_val_1k.pt`
+
+Observed sample schema:
 - `x`: `(50, 9, 5)`
 - `edge_attr`: `(50, 9, 4)`
 - `ego_features`: `(50, 5)`
 - `y`: `(40, 5)`
 
-The training/validation scripts use:
-- first 30 future steps from `y`
-- first 2 coordinates as trajectory targets
+Target usage:
+- first 30 future steps
+- first 2 coordinates
 
-### 3.2 Normalization
-To remain compatible with the task setup, fixed normalization statistics are applied to:
-- node features
-- ego features
-- trajectory targets
-
-The same normalization/de-normalization path is used in train and validation scripts.
-
-### 3.3 Preprocessing references
-The following preprocessing files are copied from:
-`/home/aryan/work/startup/predmodel/data/agroverse_data_preprocessing`
-
-Included in this repository under `data_processing/`:
-- `file1.py`
-- `file2.py`
-- `graphs.py`
-- `file3.py`
-
-These are included for transparency so viewers can inspect how graph data construction was done in your upstream pipeline.
+Normalization is fixed and consistent across train and validation paths.
 
 ## 4. Architecture
-## 4.1 Direct 2D TCN Encoder
-Path: `src/trajectory_vae_forecasting/models/tcn_blocks.py`, `tcn_encoder.py`
+### 4.1 Direct 2D TCN Encoder
+Files:
+- `src/trajectory_vae_forecasting/models/tcn_blocks.py`
+- `src/trajectory_vae_forecasting/models/tcn_encoder.py`
 
-Pipeline:
-1. Input node tensor is rearranged to channel-first format.
-2. A stack of residual 2D dilated temporal blocks extracts temporal context.
-3. The final encoder output is aggregated over node axis and last observed time index to form compact context.
+### 4.2 Context Fusion
+File:
+- `src/trajectory_vae_forecasting/models/forecaster.py`
 
-The model intentionally omits a separate spatial encoder module.
+### 4.3 Conditional VAE Decoder
+File:
+- `src/trajectory_vae_forecasting/models/cvae_decoder.py`
 
-## 4.2 Context Fusion
-Path: `src/trajectory_vae_forecasting/models/forecaster.py`
+### 4.4 Objective
+File:
+- `src/trajectory_vae_forecasting/models/losses.py`
 
-- Ego features are projected with a lightweight MLP.
-- Node context and ego context are concatenated.
-- A context head maps the fused vector into latent-conditioning space.
-
-## 4.3 Conditional VAE Decoder
-Path: `src/trajectory_vae_forecasting/models/cvae_decoder.py`
-
-The decoder learns:
-- Prior network `p(z | context)`
-- Posterior network `q(z | context, target)`
-- Mode-conditioned decoder `p(y | context, z, mode)`
-
-Multimodality is realized by adding mode embeddings to latent samples and decoding all modes jointly.
-
-## 4.4 Loss
-Path: `src/trajectory_vae_forecasting/models/losses.py`
-
-Total objective:
+Total loss:
 - `L = L_recon_best_of_K + lambda_kl * L_kl + lambda_div * L_div`
-
-Where:
-- `L_recon_best_of_K`: Smooth L1 on best mode per sample
-- `L_kl`: KL divergence between posterior and prior Gaussians
-- `L_div`: pairwise trajectory diversity regularizer
 
 ## 5. Repository Structure
 ```text
@@ -117,7 +86,11 @@ vehicle-trajectory-tcn-vae/
     file2.py
     file3.py
     graphs.py
+  datasets/
+    awk9_train_10k.pt
+    awk9_val_1k.pt
   scripts/
+    download_datasets.py
     train.py
     validate.py
     verify_cuda.py
@@ -137,116 +110,109 @@ vehicle-trajectory-tcn-vae/
   README.md
 ```
 
-## 6. Pixi-Centered Environment Setup
-## 6.1 Install Pixi
-Official installer:
+## 6. Install and Environment
+### 6.1 Install Pixi
 ```bash
 curl -fsSL https://pixi.sh/install.sh | bash
-```
-Then restart shell and verify:
-```bash
 pixi --version
 ```
 
-## 6.2 Create and lock environment
-From project root:
+### 6.2 Create environment
 ```bash
 cd /home/aryan/work/projects/vehicle-trajectory-tcn-vae
 pixi install
 ```
 
-This provisions the pinned Python and package set from `pixi.toml`.
-
-## 6.3 Install requirements inside Pixi environment
+### 6.3 Install requirements in Pixi env
 ```bash
 pixi run bootstrap
 ```
 
-This executes:
-- `python -m pip install --upgrade pip`
-- `python -m pip install -r requirements.txt`
-
-Using `pixi run` forces installation into the Pixi-managed environment rather than host Python.
-
-## 6.4 Verify CUDA/runtime alignment
+### 6.4 Verify CUDA/runtime alignment
 ```bash
 pixi run verify-cuda
 ```
 
-The script prints:
-- Python version
-- Torch version
-- CUDA version Torch was compiled with
-- CUDA availability
-- GPU names
-- `nvidia-smi` report
-- mismatch flag
-
-If mismatch is reported:
-1. verify host NVIDIA driver supports the reported CUDA runtime
-2. ensure you run training only via `pixi run ...`
-3. update torch wheel pin/index if your cluster requires a different CUDA build
-
-## 7. Training
-## 7.1 Full command
+## 7. Download Dataset Into Required Directory
+From project root:
 ```bash
-pixi run python scripts/train.py \
-  --dataset-path /home/aryan/work/startup/datasetpredmodel/graphs/awk9.pt \
-  --val-dataset-path /home/aryan/work/startup/datasetpredmodel/graphs/awk9.pt \
-  --max-train-samples 30 \
-  --max-val-samples 30 \
-  --epochs 2 \
-  --batch-size 8 \
-  --save-path checkpoints/tcn_cvae.pt
+pixi run download-datasets
 ```
 
-### 7.2 Key outputs
-Per epoch:
-- train loss
-- validation minADE
-- validation minFDE
-- best checkpoint save message
+This downloads directly into:
+- `datasets/awk9_train_10k.pt`
+- `datasets/awk9_val_1k.pt`
 
-## 8. Validation
+Optional direct command:
 ```bash
-pixi run python scripts/validate.py \
-  --dataset-path /home/aryan/work/startup/datasetpredmodel/graphs/awk9.pt \
-  --checkpoint checkpoints/tcn_cvae.pt \
-  --max-samples 30 \
-  --batch-size 8
+pixi run python scripts/download_datasets.py --repo-id aryanb1702/awk9 --out-dir datasets
 ```
 
-## 9. Smoke-Test Verification Performed
-A short smoke test was run on 24 samples with the requested dataset path.
+## 8. Training and Validation With New Defaults
+The scripts are now configured to use these defaults automatically:
+- train dataset: `datasets/awk9_train_10k.pt`
+- validation dataset: `datasets/awk9_val_1k.pt`
+- validation checkpoint: `checkpoints/tcn_cvae.pt`
 
-Training test:
-- `epochs=1`, `batch_size=6`, `max_train_samples=24`, `max_val_samples=24`
-- completed successfully
+Train:
+```bash
+pixi run train
+```
 
-Validation test:
-- same 24 samples used as validation surrogate
-- completed successfully
+Validate:
+```bash
+pixi run validate
+```
 
-The scripts are therefore verified for:
-- data loading
-- forward pass
-- loss computation
-- optimization step
-- checkpoint save/load
-- metric evaluation path
+## 9. Per-Batch Metrics
+Training prints continuous per-batch metrics:
+- `loss_total`
+- `loss_recon`
+- `loss_kl`
+- `loss_diversity`
+- `batch_minADE`
+- `batch_minFDE`
 
-## 10. Notes on Reproducibility and Stability
-- Use only `pixi run ...` to avoid host-env leakage.
-- Keep pins synchronized between `pixi.toml`, `pyproject.toml`, and `requirements.txt`.
-- Run `pixi run verify-cuda` before long training jobs.
-- Keep dataset path explicit in command lines.
+Epoch summary includes:
+- `train_loss`
+- `val_minADE`
+- `val_minFDE`
 
-## 11. Limitations and Practical Scope
-- This repository focuses on architecture replacement and pipeline correctness, not final SOTA performance claims.
-- The provided smoke test is a functional check on small samples, not a full convergence study.
-- Hyperparameters are intentionally minimal and easy to inspect.
+## 10. Fast Verification Path
+For a quick functional check:
+```bash
+pixi run python scripts/train.py --max-train-samples 20 --max-val-samples 20 --epochs 1 --batch-size 5 --save-path checkpoints/tcn_cvae_smoke.pt
+pixi run python scripts/validate.py --max-samples 20 --batch-size 5 --checkpoint checkpoints/tcn_cvae_smoke.pt
+```
 
-## 12. Citation-Style Summary
-If you describe this project in technical documentation, an accurate summary is:
+## 11. Critical Disclaimer on Initial Runtime
+Initial setup and first runs can take noticeable time. This is expected.
 
-A direct 2D temporal convolution encoder is used to process node histories without a dedicated spatial encoder, and a context-conditioned VAE with mode embeddings generates multimodal trajectory forecasts. Training uses best-of-K reconstruction with KL and diversity regularization under the same task-level dataset contract as the reference pipeline.
+Main reasons:
+- Pixi resolves and installs a pinned environment
+- first import/initialization of heavy ML packages
+- large `.pt` file deserialization for dataset loading
+
+After setup, repeated runs are faster. For best iteration speed, use:
+```bash
+pixi shell
+```
+and then run `python scripts/train.py` / `python scripts/validate.py` inside that shell.
+
+## 12. Preprocessing Transparency
+Reference preprocessing files are included in `data_processing/`:
+- `file1.py`
+- `file2.py`
+- `graphs.py`
+- `file3.py`
+
+These are copied from:
+`/home/aryan/work/startup/predmodel/data/agroverse_data_preprocessing`
+
+## 13. Scope
+This repository prioritizes:
+- architecture replacement
+- reproducible setup
+- end-to-end correctness
+
+It does not claim benchmark-optimized SOTA performance.

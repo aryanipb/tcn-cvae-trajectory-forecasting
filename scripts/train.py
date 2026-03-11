@@ -42,10 +42,10 @@ def evaluate(model, loader, device, stats):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train TCN+CVAE trajectory forecasting model")
-    parser.add_argument("--dataset-path", type=str, required=True)
-    parser.add_argument("--val-dataset-path", type=str, default="")
-    parser.add_argument("--max-train-samples", type=int, default=30)
-    parser.add_argument("--max-val-samples", type=int, default=30)
+    parser.add_argument("--dataset-path", type=str, default=str(PROJECT_ROOT / "datasets" / "awk9_train_10k.pt"))
+    parser.add_argument("--val-dataset-path", type=str, default=str(PROJECT_ROOT / "datasets" / "awk9_val_1k.pt"))
+    parser.add_argument("--max-train-samples", type=int, default=None)
+    parser.add_argument("--max-val-samples", type=int, default=None)
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--epochs", type=int, default=2)
     parser.add_argument("--lr", type=float, default=3e-4)
@@ -66,8 +66,7 @@ def main():
     print(f"[INFO] device={device}")
 
     train_ds = GraphTrajectoryDataset(args.dataset_path, max_samples=args.max_train_samples)
-    val_path = args.val_dataset_path or args.dataset_path
-    val_ds = GraphTrajectoryDataset(val_path, max_samples=args.max_val_samples)
+    val_ds = GraphTrajectoryDataset(args.val_dataset_path, max_samples=args.max_val_samples)
 
     train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, drop_last=False)
     val_loader = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, drop_last=False)
@@ -86,7 +85,7 @@ def main():
         epoch_loss = 0.0
         step_count = 0
 
-        for batch in train_loader:
+        for batch_idx, batch in enumerate(train_loader, start=1):
             node, edge, ego, target = prepare_batch(batch, device, stats)
 
             optimizer.zero_grad(set_to_none=True)
@@ -102,8 +101,25 @@ def main():
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
 
+            with torch.no_grad():
+                preds = out["preds"]
+                preds_dn = preds * stats["y_sigma"] + stats["y_mu"]
+                target_dn = target * stats["y_sigma"] + stats["y_mu"]
+                batch_ade = float(min_ade(preds_dn, target_dn).item())
+                batch_fde = float(min_fde(preds_dn, target_dn).item())
+
             epoch_loss += float(loss.item())
             step_count += 1
+            print(
+                f"[EPOCH {epoch}][BATCH {batch_idx}/{len(train_loader)}] "
+                f"loss_total={float(loss.item()):.4f} "
+                f"loss_recon={float(loss_dict['recon'].item()):.4f} "
+                f"loss_kl={float(loss_dict['kl'].item()):.4f} "
+                f"loss_diversity={float(loss_dict['diversity'].item()):.4f} "
+                f"batch_minADE={batch_ade:.4f} "
+                f"batch_minFDE={batch_fde:.4f}",
+                flush=True,
+            )
 
         train_loss = epoch_loss / max(step_count, 1)
         val_ade, val_fde = evaluate(model, val_loader, device, stats)

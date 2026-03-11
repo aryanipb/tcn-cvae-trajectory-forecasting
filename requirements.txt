@@ -3,3 +3,4 @@ torchvision==0.21.0
 torchaudio==2.6.0
 torch-geometric==2.7.0
 numpy==2.2.4
+huggingface_hub==0.34.4
