@@ -1,20 +1,11 @@
 # Vehicle Trajectory Forecasting with Direct 2D TCN + Conditional VAE
 
 ## 1. Overview
-This repository implements multimodal vehicle trajectory forecasting for the same task interface as the reference pipeline, but with a fully different model design.
+This repository implements multimodal vehicle trajectory forecasting.
 
 Model design in this project:
-- Direct node history input to a 2D temporal convolution encoder
-- No spatial encoder branch
+- Node history input to a 2D temporal convolution encoder
 - Context-conditioned variational autoencoder for multimodal trajectory generation
-
-This repo provides:
-- Modular model code
-- Minimal non-Modal train/validate scripts
-- Pixi-first reproducible environment setup
-- CUDA/runtime verification utility
-- Dataset download script for Hugging Face
-- Preprocessing reference files for transparency
 
 ## 2. Problem Formulation
 Given observed context:
@@ -29,7 +20,7 @@ Task constants used here:
 - `N = 9`
 - `F_node = 5`
 - `F_ego = 5`
-- `T_pred = 30`
+- `T_pred = 40`
 - `K = 6`
 
 Training objective combines:
@@ -58,7 +49,7 @@ Target usage:
 Normalization is fixed and consistent across train and validation paths.
 
 ## 4. Architecture
-### 4.1 Direct 2D TCN Encoder
+### 4.1 2D TCN Encoder
 Files:
 - `src/trajectory_vae_forecasting/models/tcn_blocks.py`
 - `src/trajectory_vae_forecasting/models/tcn_encoder.py`
@@ -181,8 +172,8 @@ Epoch summary includes:
 ## 10. Fast Verification Path
 For a quick functional check:
 ```bash
-pixi run python scripts/train.py --max-train-samples 20 --max-val-samples 20 --epochs 1 --batch-size 5 --save-path checkpoints/tcn_cvae_smoke.pt
-pixi run python scripts/validate.py --max-samples 20 --batch-size 5 --checkpoint checkpoints/tcn_cvae_smoke.pt
+pixi run python scripts/train.py --max-train-samples 20 --max-val-samples 20 --epochs 1 --batch-size 1 --save-path checkpoints/tcn_cvae_smoke.pt
+pixi run python scripts/validate.py --max-samples 20 --batch-size 1 --checkpoint checkpoints/tcn_cvae_smoke.pt
 ```
 
 ## 11. Critical Disclaimer on Initial Runtime
@@ -200,19 +191,8 @@ pixi shell
 and then run `python scripts/train.py` / `python scripts/validate.py` inside that shell.
 
 ## 12. Preprocessing Transparency
-Reference preprocessing files are included in `data_processing/`:
+Reference preprocessing files are included in `data_processing/` for the agroverse 2 motion forecasting dataset:
 - `file1.py`
 - `file2.py`
 - `graphs.py`
 - `file3.py`
-
-These are copied from:
-`/home/aryan/work/startup/predmodel/data/agroverse_data_preprocessing`
-
-## 13. Scope
-This repository prioritizes:
-- architecture replacement
-- reproducible setup
-- end-to-end correctness
-
-It does not claim benchmark-optimized SOTA performance.
