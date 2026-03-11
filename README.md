@@ -183,8 +183,6 @@ pixi run python scripts/validate.py \
 
 ## 11. Model Concept and Architecture
 
-This section explains the method, not repo layout.
-
 ### 11.1 Forecasting Objective
 
 Given observed history, predict a **distribution** of future trajectories:
